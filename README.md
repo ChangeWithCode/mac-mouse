@@ -17,25 +17,21 @@ Glide adds the four things Mac Mouse Fix is most often asked for:
 
 ---
 
-## Status — read this first
+## Status
 
-**This code has never been compiled.** It was written on a Linux machine with
-no Swift toolchain and no Xcode, and the egress proxy blocked installing one.
-Expect to fix compile errors on the first build.
+**Builds clean on macOS 14 with Swift 6.2** — `GlideCore`, `GlideKit` and the
+app target all compile, and the 66-test suite passes. CI proves it on every
+push ([Build workflow](.github/workflows/build.yml)).
 
-What that means in practice:
+**It has not yet been run against a real mouse.** Compiling is not working: the
+event tap, HID attribution and gesture synthesis have never met the window
+server. Treat the scrolling feel as unproven until someone installs it.
 
-- **The maths and the state machines are tested and correct.** They are mirrored
-  by a Node harness in [`Tools/physics-lab/`](Tools/physics-lab/) that asserts
-  the same invariants, and all 39 checks pass. That harness caught four real
-  bugs, described below.
-- **The Swift has not been type-checked.** Expect missing imports, API drift and
-  signature mistakes — the ordinary first-build noise.
-- **The macOS integration is unverified.** `CGEventTap`, `IOHIDManager`, the
-  scroll-phase event fields and `CVDisplayLink` are all written from their
-  documented contracts, but nothing has actually run against the window server.
+The maths is a different matter — it is mirrored by a Node harness in
+[`Tools/physics-lab/`](Tools/physics-lab/) that asserts the same invariants,
+runs anywhere, and caught five real bugs (below).
 
-Run everything that *can* be checked without a Mac:
+Run everything that needs no Mac:
 
 ```bash
 ./Scripts/verify.sh
@@ -130,7 +126,7 @@ rubber-band bounce. Same API, entirely different feel.
 
 ### What the harness caught
 
-Writing the Node mirror before trusting the Swift paid for itself four times:
+Writing the Node mirror before trusting the Swift paid for itself five times:
 
 1. **Trapezoid integration drifted.** Integrating each frame with a trapezoid —
    the obvious choice — lost ~0.7pt on a hard fling at 60Hz, worse at 30Hz, and
@@ -145,6 +141,11 @@ Writing the Node mirror before trusting the Swift paid for itself four times:
    means no separate momentum *stream*, not a truncated tick.
 4. **Resuming mid-coast orphaned the gesture.** Grabbing a coasting page emitted
    `changed` after the gesture had already been closed with `ended`.
+5. **`projectedDistance` and the simulation disagreed** by a fraction of a
+   point. The projection is the travel needed to decay exactly *to* the stop
+   threshold, but a frame-stepped fling stops at the first frame *below* it, so
+   it always overshoots slightly. The invariant is now a two-sided bound that
+   pins the discrepancy to one frame of decay rather than tolerating it.
 
 ### Input recognition
 
@@ -175,7 +176,8 @@ can be diffed and kept in a dotfiles repo.
 
 Stated plainly rather than discovered later:
 
-- **Nothing has been compiled or run.** See Status above.
+- **Never run against real hardware.** It compiles and its logic is tested, but
+  no part of the macOS event pipeline has been exercised on a live system.
 - **Pinch-zoom and space-navigation gestures are stubs.** They need real
   `NSEvent` gesture events (type 29 with the magnify and swipe subtypes) whose
   fields are undocumented and change shape between releases. Rather than guess,

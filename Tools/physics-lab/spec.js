@@ -181,11 +181,18 @@ check('projectedDuration agrees with the simulated frame count', () => {
   }
 });
 
-check('projectedDistance bounds every simulated fling', () => {
+check('projectedDistance matches the simulation to within one frame', () => {
+  // The projection is the travel needed to decay exactly TO the threshold; a
+  // frame-stepped fling stops at the first frame BELOW it, so it overshoots by
+  // at most one frame of decay from threshold speed.
+  const fps = 60;
   for (const v0 of [100, 1000, 8000]) {
-    const sim = momentum.simulate(v0, 1 / 60);
-    assert(sim.distance <= momentum.projectedDistance(v0) + 1e-6,
-      `v0=${v0}: travelled ${sim.distance} > bound ${momentum.projectedDistance(v0)}`);
+    const sim = momentum.simulate(v0, 1 / fps);
+    const projected = momentum.projectedDistance(v0);
+    const slack = momentum.stopThreshold * (1 - Math.exp(-momentum.k / fps)) / momentum.k;
+    assert(sim.distance >= projected - 1e-9, `v0=${v0}: fell short (${sim.distance} < ${projected})`);
+    assert(sim.distance <= projected + slack + 1e-9,
+      `v0=${v0}: overshot by more than one frame (${sim.distance - projected} > ${slack})`);
   }
 });
 

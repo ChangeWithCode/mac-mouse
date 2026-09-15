@@ -117,8 +117,16 @@ class MomentumScroll {
     this.stopThreshold = stopThreshold;
   }
 
-  /* Exact closed-form total travel for an initial velocity, in pixels. */
-  projectedDistance(v0) { return v0 / this.k; }
+  /*
+   * Exact closed-form travel until velocity decays to stopThreshold.
+   * Mirrors MomentumScroll.projectedDistance in Swift — note this is the
+   * distance to REACH the threshold; a frame-stepped fling stops just past it.
+   */
+  projectedDistance(v0) {
+    const magnitude = Math.abs(v0);
+    if (magnitude <= this.stopThreshold) return 0;
+    return (magnitude - this.stopThreshold) / this.k * (v0 < 0 ? -1 : 1);
+  }
 
   /* Exact time until |v| decays below the stop threshold, in seconds. */
   projectedDuration(v0) {

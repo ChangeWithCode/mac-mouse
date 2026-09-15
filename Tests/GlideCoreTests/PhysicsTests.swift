@@ -33,11 +33,25 @@ final class MomentumScrollTests: XCTestCase {
         }
     }
 
-    func testProjectedDistanceBoundsEveryFling() {
+    /// `projectedDistance` is the travel needed to decay exactly *to* the stop
+    /// threshold, but a frame-stepped fling stops at the first frame *below* it.
+    /// The simulation therefore always overshoots the projection slightly, and
+    /// by a knowable amount: at most one frame of decay from threshold speed.
+    ///
+    /// Asserting that two-sided bound is stronger than the strict inequality it
+    /// replaces — it pins the discrepancy rather than merely tolerating it.
+    func testProjectedDistanceMatchesTheSimulationToWithinOneFrame() {
+        let frameRate = 60.0
         for velocity in [100.0, 1000.0, 8000.0] {
-            let result = simulate(velocity: velocity, frameRate: 60)
-            XCTAssertLessThanOrEqual(result.distance,
-                                     momentum.projectedDistance(velocity: velocity) + 1e-6)
+            let result = simulate(velocity: velocity, frameRate: frameRate)
+            let projected = momentum.projectedDistance(velocity: velocity)
+            // Travel contributed by one frame starting at exactly stopThreshold.
+            let slack = momentum.stopThreshold * (1 - exp(-5.2 / frameRate)) / 5.2
+
+            XCTAssertGreaterThanOrEqual(result.distance, projected - 1e-9,
+                                        "v0=\(velocity): fell short of the projection")
+            XCTAssertLessThanOrEqual(result.distance, projected + slack + 1e-9,
+                                     "v0=\(velocity): overshot by more than one frame")
         }
     }
 
