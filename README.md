@@ -41,6 +41,31 @@ Run everything that *can* be checked without a Mac:
 ./Scripts/verify.sh
 ```
 
+## Installing
+
+There is no published download yet — the code has not been compiled, so no
+release exists to download. Two routes to a `.dmg`:
+
+**Without a Mac.** Push to GitHub and the `Build` workflow compiles on a macOS
+runner, attaching `Glide.dmg` to the run as an artifact. Tagging a version
+(`git tag v0.1.0 && git push origin v0.1.0`) publishes a draft release instead.
+
+**With a Mac.**
+
+```bash
+./Scripts/build-app.sh      # dist/Glide.app
+./Scripts/package-dmg.sh    # dist/Glide.dmg
+```
+
+Then: open the image, drag **Glide** onto **Applications**, and — because these
+builds are ad-hoc signed rather than notarised — **right-click Glide and choose
+Open** the first time. A plain double-click is refused. Grant Accessibility
+permission when asked.
+
+Distributing it without that right-click step needs an Apple Developer account
+(£79/$99 a year) to sign and notarise; `Scripts/package-dmg.sh` prints the
+commands.
+
 ## Building
 
 ```bash

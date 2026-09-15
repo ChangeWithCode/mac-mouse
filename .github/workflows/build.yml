@@ -1,0 +1,115 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # The maths and state machines are mirrored in Node so they can be checked
+  # without a macOS runner. Fast, and it fails loudly if the Swift and the
+  # reference implementation drift apart.
+  verify-core-logic:
+    name: Core logic (Node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Physics core
+        run: node Tools/physics-lab/spec.js
+      - name: Scroll engine
+        run: node Tools/physics-lab/engine.spec.js
+      - name: Chord recogniser
+        run: node Tools/physics-lab/chord.spec.js
+      - name: Preset guard rails
+        run: node Tools/physics-lab/presets.js
+
+  build:
+    name: Build app (macOS)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      # Each layer builds as its own step, and failures do not stop the run, so
+      # a single CI round-trip reports every layer's errors instead of only the
+      # first. Round-trips are slow; information per round-trip matters.
+      - name: Build GlideCore
+        id: core
+        continue-on-error: true
+        run: swift build --target GlideCore 2>&1 | tee core.log
+
+      - name: Build GlideKit
+        id: kit
+        continue-on-error: true
+        run: swift build --target GlideKit 2>&1 | tee kit.log
+
+      - name: Build Glide (app)
+        id: app
+        continue-on-error: true
+        run: swift build --target Glide 2>&1 | tee app.log
+
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: swift test 2>&1 | tee test.log
+
+      - name: Error summary
+        if: always()
+        run: |
+          {
+            echo "## Build results"
+            echo
+            for layer in core kit app tests; do
+              case "$layer" in
+                core)  name="GlideCore";  outcome="${{ steps.core.outcome }}" ;;
+                kit)   name="GlideKit";   outcome="${{ steps.kit.outcome }}" ;;
+                app)   name="Glide app";  outcome="${{ steps.app.outcome }}" ;;
+                tests) name="Tests";      outcome="${{ steps.tests.outcome }}" ;;
+              esac
+              icon="x"; [ "$outcome" = "success" ] && icon="white_check_mark"
+              echo "- :$icon: **$name** — $outcome"
+            done
+            echo
+            if grep -qh "error:" ./*.log 2>/dev/null; then
+              echo "### Compiler errors"
+              echo '```'
+              grep -h "error:" ./*.log | sort -u | head -80
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: "*.log"
+
+      # Only package once everything above actually succeeded.
+      - name: Gate
+        run: |
+          [ "${{ steps.core.outcome }}"  = "success" ] || { echo "GlideCore failed"; exit 1; }
+          [ "${{ steps.kit.outcome }}"   = "success" ] || { echo "GlideKit failed"; exit 1; }
+          [ "${{ steps.app.outcome }}"   = "success" ] || { echo "Glide app failed"; exit 1; }
+          [ "${{ steps.tests.outcome }}" = "success" ] || { echo "Tests failed"; exit 1; }
+
+      - name: Assemble Glide.app
+        run: ./Scripts/build-app.sh
+
+      - name: Package disk image
+        run: ./Scripts/package-dmg.sh
+
+      - name: Upload Glide.dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: Glide-dmg
+          path: dist/Glide.dmg
+          retention-days: 30

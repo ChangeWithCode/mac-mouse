@@ -1,0 +1,43 @@
+name: Release
+
+# Publishes a downloadable disk image when a version tag is pushed:
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+      - run: ./Scripts/build-app.sh
+      - run: ./Scripts/package-dmg.sh
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Glide.dmg
+          draft: true
+          body: |
+            ## Installing
+
+            1. Download `Glide.dmg` below and open it.
+            2. Drag **Glide** onto the **Applications** alias.
+            3. Open Applications, **right-click Glide and choose Open**, then
+               confirm. This build is not notarised, so a plain double-click is
+               refused the first time. Once only.
+            4. Grant **Accessibility** permission when asked. Glide cannot read
+               mouse events without it, and macOS gives no error if it is missing.
+
+            Requires macOS 13 or later.
+
+            > Because this build is ad-hoc signed, macOS re-asks for
+            > Accessibility permission after every update. Remove the old
+            > `Glide` entry in System Settings → Privacy & Security →
+            > Accessibility before re-adding it.
