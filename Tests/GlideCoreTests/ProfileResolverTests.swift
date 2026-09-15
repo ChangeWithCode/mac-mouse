@@ -16,7 +16,7 @@ final class ProfileResolverTests: XCTestCase {
     private func base(
         preset: ScrollPreset = .balanced,
         invert: Bool = false,
-        bindings: [Binding] = []
+        bindings: [ActionBinding] = []
     ) -> Profile {
         Profile(
             name: "Base",
@@ -128,10 +128,10 @@ final class ProfileResolverTests: XCTestCase {
 
     func testTheMostSpecificLayerOwnsATrigger() {
         let trigger = ButtonTrigger(.middle, .click(count: 1))
-        let global = base(bindings: [Binding(trigger: trigger, action: .missionControl)])
+        let global = base(bindings: [ActionBinding(trigger: trigger, action: .missionControl)])
         let appLayer = Profile(
             name: "Safari", scope: ProfileScope(applications: ["com.apple.Safari"]),
-            bindings: [Binding(trigger: trigger, action: .launchpad)]
+            bindings: [ActionBinding(trigger: trigger, action: .launchpad)]
         )
         let resolved = resolver.resolve(
             profiles: [global, appLayer], application: "com.apple.Safari", device: mouse
@@ -145,12 +145,12 @@ final class ProfileResolverTests: XCTestCase {
         let middle = ButtonTrigger(.middle, .click(count: 1))
         let back = ButtonTrigger(.back, .click(count: 1))
         let global = base(bindings: [
-            Binding(trigger: middle, action: .missionControl),
-            Binding(trigger: back, action: .back),
+            ActionBinding(trigger: middle, action: .missionControl),
+            ActionBinding(trigger: back, action: .back),
         ])
         let appLayer = Profile(
             name: "Safari", scope: ProfileScope(applications: ["com.apple.Safari"]),
-            bindings: [Binding(trigger: middle, action: .launchpad)]
+            bindings: [ActionBinding(trigger: middle, action: .launchpad)]
         )
         let resolved = resolver.resolve(
             profiles: [global, appLayer], application: "com.apple.Safari", device: mouse
@@ -165,8 +165,8 @@ final class ProfileResolverTests: XCTestCase {
         let chord = ButtonTrigger(buttons: [.back, .forward], kind: .click(count: 1))
         let resolved = resolver.resolve(
             profiles: [base(bindings: [
-                Binding(trigger: single, action: .back),
-                Binding(trigger: chord, action: .missionControl),
+                ActionBinding(trigger: single, action: .back),
+                ActionBinding(trigger: chord, action: .missionControl),
             ])],
             application: nil, device: mouse
         )
@@ -175,7 +175,7 @@ final class ProfileResolverTests: XCTestCase {
 
     func testHasAnyBindingDrivesTheRecognizerFastPath() {
         let resolved = resolver.resolve(
-            profiles: [base(bindings: [Binding(trigger: ButtonTrigger(.back, .click(count: 1)), action: .back)])],
+            profiles: [base(bindings: [ActionBinding(trigger: ButtonTrigger(.back, .click(count: 1)), action: .back)])],
             application: nil, device: mouse
         )
         XCTAssertTrue(resolved.hasAnyBinding(for: .back))

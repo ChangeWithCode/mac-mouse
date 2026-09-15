@@ -106,7 +106,7 @@ public struct ResolvedSettings: Hashable, Sendable {
     public var pointerAccelerationCurve: UnitBezier?
 
     /// Bindings in match order, most specific first.
-    public var bindings: [Binding]
+    public var bindings: [ActionBinding]
 
     /// The defaults a fresh install runs with.
     public static let fallback = ResolvedSettings(
@@ -132,7 +132,7 @@ public struct ResolvedSettings: Hashable, Sendable {
         pointerSensitivity: Double,
         disablePointerAcceleration: Bool,
         pointerAccelerationCurve: UnitBezier?,
-        bindings: [Binding]
+        bindings: [ActionBinding]
     ) {
         self.scrollPreset = scrollPreset
         self.invertVertical = invertVertical
@@ -147,7 +147,7 @@ public struct ResolvedSettings: Hashable, Sendable {
     }
 
     /// The binding that should handle `trigger`, or nil.
-    public func binding(for trigger: ButtonTrigger) -> Binding? {
+    public func binding(for trigger: ButtonTrigger) -> ActionBinding? {
         bindings.first { $0.isEnabled && $0.trigger == trigger }
     }
 

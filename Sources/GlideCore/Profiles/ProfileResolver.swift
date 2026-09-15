@@ -53,7 +53,7 @@ public struct ProfileResolver {
         // trigger owns it. Walking the layers in reverse means the first match
         // found is already the winner.
         var seen = Set<ButtonTrigger>()
-        var bindings: [Binding] = []
+        var bindings: [ActionBinding] = []
         for layer in layers.reversed() {
             for binding in layer.bindings where binding.isEnabled {
                 guard !seen.contains(binding.trigger) else { continue }

@@ -4,10 +4,10 @@ import SwiftUI
 struct ButtonsView: View {
 
     @EnvironmentObject private var state: AppState
-    @State private var editing: GlideCore.Binding?
+    @State private var editing: ActionBinding?
     @State private var isAdding = false
 
-    private var bindings: [GlideCore.Binding] {
+    private var bindings: [ActionBinding] {
         (state.selectedProfile?.bindings ?? []).sorted { $0.trigger.specificity > $1.trigger.specificity }
     }
 
@@ -67,7 +67,7 @@ struct ButtonsView: View {
         }
         .sheet(isPresented: $isAdding) {
             BindingEditor(
-                binding: GlideCore.Binding(trigger: ButtonTrigger(.middle, .click(count: 1)), action: .missionControl)
+                binding: ActionBinding(trigger: ButtonTrigger(.middle, .click(count: 1)), action: .missionControl)
             ) { created in
                 state.editSelectedProfile { $0.bindings.append(created) }
             }
@@ -92,7 +92,7 @@ struct ButtonsView: View {
 }
 
 struct BindingRow: View {
-    let binding: GlideCore.Binding
+    let binding: ActionBinding
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onToggle: (Bool) -> Void
@@ -138,11 +138,11 @@ struct BindingRow: View {
 /// Sheet for creating or changing a binding.
 struct BindingEditor: View {
 
-    @State private var draft: GlideCore.Binding
+    @State private var draft: ActionBinding
     @Environment(\.dismiss) private var dismiss
-    private let onSave: (GlideCore.Binding) -> Void
+    private let onSave: (ActionBinding) -> Void
 
-    init(binding: GlideCore.Binding, onSave: @escaping (GlideCore.Binding) -> Void) {
+    init(binding: ActionBinding, onSave: @escaping (ActionBinding) -> Void) {
         _draft = State(initialValue: binding)
         self.onSave = onSave
     }

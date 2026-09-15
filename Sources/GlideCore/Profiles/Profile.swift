@@ -1,7 +1,7 @@
 import Foundation
 
 /// A trigger bound to an action.
-public struct Binding: Identifiable, Hashable, Codable, Sendable {
+public struct ActionBinding: Identifiable, Hashable, Codable, Sendable {
     public var id: UUID
     public var trigger: ButtonTrigger
     public var action: GlideAction
@@ -67,7 +67,7 @@ public struct Profile: Identifiable, Hashable, Codable, Sendable {
     public var scope: ProfileScope
     public var scroll: ScrollSettings
     public var pointer: PointerSettings
-    public var bindings: [Binding]
+    public var bindings: [ActionBinding]
 
     /// Set on a profile activated by an `activateProfile` binding rather than by
     /// scope matching. Modal layers sit above everything else while active.
@@ -83,7 +83,7 @@ public struct Profile: Identifiable, Hashable, Codable, Sendable {
         scope: ProfileScope = .global,
         scroll: ScrollSettings = ScrollSettings(),
         pointer: PointerSettings = PointerSettings(),
-        bindings: [Binding] = [],
+        bindings: [ActionBinding] = [],
         isModal: Bool = false,
         symbolName: String = "square.stack.3d.up"
     ) {
@@ -117,10 +117,10 @@ public struct Profile: Identifiable, Hashable, Codable, Sendable {
             ),
             pointer: PointerSettings(sensitivity: 1.0, disableAcceleration: false),
             bindings: [
-                Binding(trigger: ButtonTrigger(.middle, .click(count: 1)), action: .missionControl),
-                Binding(trigger: ButtonTrigger(.back, .click(count: 1)), action: .back),
-                Binding(trigger: ButtonTrigger(.forward, .click(count: 1)), action: .forward),
-                Binding(trigger: ButtonTrigger(.middle, .drag), action: .scrollAndNavigate),
+                ActionBinding(trigger: ButtonTrigger(.middle, .click(count: 1)), action: .missionControl),
+                ActionBinding(trigger: ButtonTrigger(.back, .click(count: 1)), action: .back),
+                ActionBinding(trigger: ButtonTrigger(.forward, .click(count: 1)), action: .forward),
+                ActionBinding(trigger: ButtonTrigger(.middle, .drag), action: .scrollAndNavigate),
             ],
             symbolName: "globe"
         )
