@@ -75,7 +75,16 @@ public final class AppState: ObservableObject {
             .store(in: &cancellables)
 
         push()
-        if permissionGranted { startEngine() } else { watchForPermission() }
+        if permissionGranted {
+            startEngine()
+        } else {
+            // Ask for the permission rather than only waiting for it. Glide has
+            // no Dock icon and its engine cannot start without Accessibility, so
+            // a first launch that never prompts is indistinguishable from a
+            // first launch that crashed.
+            AccessibilityPermission.request()
+            watchForPermission()
+        }
     }
 
     // MARK: - Engine

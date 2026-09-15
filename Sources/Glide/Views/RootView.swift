@@ -53,8 +53,8 @@ struct RootView: View {
             Divider()
             HStack {
                 StatusPill(
-                    state.engine.isRunning ? "Active" : "Paused",
-                    tone: state.engine.isRunning ? .positive : .warning
+                    state.engine.isActive ? "Active" : "Paused",
+                    tone: state.engine.isActive ? .positive : .warning
                 )
                 Spacer()
                 Text("\(state.engine.connectedDevices.filter { !$0.isAppleDevice }.count) mice")

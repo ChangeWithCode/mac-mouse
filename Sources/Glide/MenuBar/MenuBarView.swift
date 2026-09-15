@@ -19,8 +19,8 @@ struct MenuBarView: View {
                 Text("Glide").font(Design.Typography.title)
                 Spacer()
                 StatusPill(
-                    state.engine.isRunning ? "Active" : "Paused",
-                    tone: state.engine.isRunning ? .positive : .warning
+                    state.engine.isActive ? "Active" : "Paused",
+                    tone: state.engine.isActive ? .positive : .warning
                 )
             }
 
@@ -37,13 +37,19 @@ struct MenuBarView: View {
             Divider()
 
             Toggle("Enabled", isOn: .init(
-                get: { state.engine.isRunning },
+                get: { state.engine.isActive },
                 set: { state.engine.setPaused(!$0) }
             ))
             .toggleStyle(.switch)
+            .disabled(!state.engine.isRunning)
 
-            Button("Settings…") { openWindow(id: "settings") }
-                .buttonStyle(.bordered)
+            // An accessory app is not frontmost, so the window would otherwise
+            // open behind whatever the person was using.
+            Button("Settings…") {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                openWindow(id: "settings")
+            }
+            .buttonStyle(.bordered)
 
             Button("Quit Glide") { NSApplication.shared.terminate(nil) }
                 .buttonStyle(.borderless)

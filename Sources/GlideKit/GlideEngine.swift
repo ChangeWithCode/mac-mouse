@@ -36,6 +36,9 @@ public final class GlideEngine: ObservableObject {
 
     // State
     @Published public private(set) var isRunning = false
+    /// Whether events are being handed straight back to macOS. Distinct from
+    /// `isRunning`: the tap is still installed, it is just not intercepting.
+    @Published public private(set) var isPaused = false
     @Published public private(set) var connectedDevices: [DeviceIdentity] = []
     @Published public private(set) var frontmostApplication: String?
     @Published public private(set) var lastError: String?
@@ -105,7 +108,9 @@ public final class GlideEngine: ObservableObject {
         RunLoop.main.add(timer, forMode: .common)
         recognizerTimer = timer
 
+        Diagnostics.reset()
         isRunning = true
+        isPaused = false
         lastError = nil
         log.info("Glide engine started")
     }
@@ -119,12 +124,19 @@ public final class GlideEngine: ObservableObject {
         devices.stop()
         recognizer.reset()
         isRunning = false
+        isPaused = false
         log.info("Glide engine stopped")
     }
+
+    /// Whether Glide is actually intercepting: started *and* not paused. The
+    /// status readouts want this, not `isRunning` — a paused tap is still
+    /// running and reporting it as "Active" is how the UI ends up lying.
+    public var isActive: Bool { isRunning && !isPaused }
 
     /// Temporarily hands every event back to macOS without tearing down.
     public func setPaused(_ paused: Bool) {
         tap?.setPassthrough(paused)
+        isPaused = paused
         if paused { scroll.cancel(); recognizer.reset() }
     }
 
@@ -189,11 +201,19 @@ public final class GlideEngine: ObservableObject {
         }
 
         // Apple's own devices are never touched.
-        if let activeDevice, activeDevice.isAppleDevice { return .pass }
+        if let activeDevice, activeDevice.isAppleDevice {
+            Diagnostics.trace("engine.apple", "passing \(type.rawValue) from \(activeDevice.displayName)")
+            return .pass
+        }
 
         switch type {
         case .scrollWheel:
-            return scroll.handle(scrollEvent: event) ? .discard : .pass
+            let consumed = scroll.handle(scrollEvent: event)
+            Diagnostics.trace(
+                "engine.scroll",
+                "device=\(activeDevice?.displayName ?? "none") consumed=\(consumed)"
+            )
+            return consumed ? .discard : .pass
 
         case .otherMouseDown, .leftMouseDown, .rightMouseDown:
             return handleButton(event: event, isDown: true)
@@ -232,6 +252,11 @@ public final class GlideEngine: ObservableObject {
         let events = isDown
             ? recognizer.press(button, at: now)
             : recognizer.release(button, at: now)
+
+        Diagnostics.trace(
+            "engine.button",
+            "button=\(button.number) down=\(isDown) events=\(events.count) bindings=\(resolved.bindings.count)"
+        )
 
         // A pass-through means the recogniser never took an interest, so the
         // original event must reach the app untouched and on time.

@@ -44,24 +44,37 @@ public final class ScrollCoordinator {
     ///   `false` means the event should pass through untouched.
     public func handle(scrollEvent event: CGEvent) -> Bool {
         // Never reprocess our own output, or the tap feeds itself forever.
-        guard !ScrollEventSynthesizer.isSynthetic(event) else { return false }
+        guard !ScrollEventSynthesizer.isSynthetic(event) else {
+            Diagnostics.trace("scroll.synthetic", "own event passed back")
+            return false
+        }
 
         lock.lock()
         let enabled = settings.smoothingEnabled
         let horizontalEnabled = settings.horizontalEnabled
         lock.unlock()
 
-        guard enabled else { return false }
+        guard enabled else {
+            Diagnostics.trace("scroll.disabled", "smoothing is off in the resolved settings")
+            return false
+        }
 
         // A continuous event is already pixel-precise and already phased — it
         // came from a trackpad or an Apple Magic Mouse. Those are exactly what
         // Glide is imitating, so passing them through is not a limitation; it is
         // the point.
-        guard event.getIntegerValueField(.scrollWheelEventIsContinuous) == 0 else { return false }
+        guard event.getIntegerValueField(.scrollWheelEventIsContinuous) == 0 else {
+            Diagnostics.trace("scroll.continuous", "already pixel-precise; left alone")
+            return false
+        }
 
         let verticalDelta = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
         let horizontalDelta = event.getIntegerValueField(.scrollWheelEventDeltaAxis2)
-        guard verticalDelta != 0 || horizontalDelta != 0 else { return false }
+        guard verticalDelta != 0 || horizontalDelta != 0 else {
+            Diagnostics.trace("scroll.zero", "wheel event carried no line delta")
+            return false
+        }
+        Diagnostics.trace("scroll.ingest", "dy=\(verticalDelta) dx=\(horizontalDelta)")
 
         let now = MonotonicClock.now
         lock.lock()
@@ -118,6 +131,10 @@ public final class ScrollCoordinator {
     }
 
     private func post(deltaY: Int, deltaX: Int, frame: ScrollEngine.Frame) {
+        Diagnostics.trace(
+            "scroll.post",
+            "dy=\(deltaY) dx=\(deltaX) phase=\(frame.phase.rawValue) momentum=\(frame.momentumPhase.rawValue)"
+        )
         ScrollEventSynthesizer.post(
             deltaY: deltaY,
             deltaX: deltaX,

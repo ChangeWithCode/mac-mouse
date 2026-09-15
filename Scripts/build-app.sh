@@ -27,10 +27,25 @@ if ! command -v swift >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Building ($CONFIG, universal)"
-swift build -c "$CONFIG" --arch arm64 --arch x86_64
+# A universal build goes through XCBuild, which ships with Xcode and not with
+# the Command Line Tools alone. Rather than failing on a machine that has a
+# perfectly good Swift toolchain, fall back to this Mac's own architecture.
+ARCH_FLAGS=(--arch arm64 --arch x86_64)
+XCBUILD="$(xcode-select -p 2>/dev/null)/../SharedFrameworks/XCBuild.framework/Versions/A/Support/xcbuild"
+if [[ ! -x "$XCBUILD" && ! -x "/Library/Developer/SharedFrameworks/XCBuild.framework/Versions/A/Support/xcbuild" ]]; then
+  ARCH_FLAGS=()
+  echo "note: no Xcode found (only Command Line Tools), so this build is" >&2
+  echo "      $(uname -m)-only. Install Xcode for a universal binary." >&2
+fi
 
-BINARY=$(swift build -c "$CONFIG" --arch arm64 --arch x86_64 --show-bin-path)/Glide
+if [[ ${#ARCH_FLAGS[@]} -gt 0 ]]; then
+  echo "==> Building ($CONFIG, universal)"
+else
+  echo "==> Building ($CONFIG, $(uname -m))"
+fi
+swift build -c "$CONFIG" ${ARCH_FLAGS+"${ARCH_FLAGS[@]}"}
+
+BINARY=$(swift build -c "$CONFIG" ${ARCH_FLAGS+"${ARCH_FLAGS[@]}"} --show-bin-path)/Glide
 APP=dist/Glide.app
 
 echo "==> Assembling $APP"

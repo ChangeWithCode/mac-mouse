@@ -63,7 +63,10 @@ public enum ScrollEventSynthesizer {
             wheel1: Int32(clamping: deltaY),
             wheel2: Int32(clamping: deltaX),
             wheel3: 0
-        ) else { return }
+        ) else {
+            Diagnostics.trace("synth.failed", "CGEvent could not be created")
+            return
+        }
 
         event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
         event.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: Int64(deltaY))

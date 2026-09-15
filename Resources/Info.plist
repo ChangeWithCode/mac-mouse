@@ -22,6 +22,12 @@
          is opened from the menu bar rather than being the app's main presence. -->
     <key>LSUIElement</key>
     <true/>
+    <!-- IOHIDManager reads input reports to tell one mouse from another. macOS
+         gates that behind Input Monitoring and denies it outright when the
+         bundle carries no usage string, which silently disables per-device
+         profiles. -->
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>Glide identifies which mouse an event came from so each device can keep its own settings.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSSupportsAutomaticTermination</key>
