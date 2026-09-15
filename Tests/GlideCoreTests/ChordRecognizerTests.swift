@@ -164,6 +164,25 @@ final class ChordRecognizerTests: XCTestCase {
         }, "the chord hold never began")
     }
 
+    /// Regression: the search for a longer click used `(count + 1)...4`, which
+    /// on the fourth rapid click becomes 5...4 — an inverted ClosedRange, which
+    /// traps. Rapid clicking is exactly what a mouse invites, so this crashed.
+    func testAFourthRapidClickDoesNotTrap() {
+        var recognizer = self.recognizer(bound: [
+            ButtonTrigger(.back, .click(count: 1)),
+            ButtonTrigger(.back, .click(count: 2)),
+        ])
+        var time = 0.0
+        for _ in 0..<8 {
+            _ = recognizer.press(.back, at: time)
+            _ = recognizer.release(.back, at: time + 0.02)
+            _ = recognizer.tick(now: time + 0.03)
+            time += 0.05   // faster than the multi-click window, so the count climbs
+        }
+        // Reaching here without trapping is the assertion; confirm it still works.
+        XCTAssertNil(recognizer.activeContinuousTrigger)
+    }
+
     func testResetLeavesNoStateBehind() {
         var recognizer = self.recognizer(bound: [ButtonTrigger(.back, .hold)])
         _ = recognizer.press(.back, at: 0)

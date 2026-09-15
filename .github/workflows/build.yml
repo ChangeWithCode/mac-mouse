@@ -30,6 +30,12 @@ jobs:
   build:
     name: Build app (macOS)
     runs-on: macos-14
+    # `swift build ... | tee` returns tee's exit status, so without pipefail a
+    # failed compile reports success and the failure only surfaces later, where
+    # it is much harder to read. GitHub's `bash` shell sets -eo pipefail.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 

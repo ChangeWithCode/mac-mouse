@@ -20,8 +20,17 @@ public struct UnitBezier: Hashable, Sendable, Codable {
     public let y2: Double
 
     // Polynomial coefficients, derived once at init. B(t) = ((a*t + b)*t + c)*t
-    private let ax: Double, bx: Double, cx: Double
-    private let ay: Double, by: Double, cy: Double
+    //
+    // @usableFromInline rather than private: the sampling functions below are
+    // @inlinable so they can cross module boundaries without a call, and an
+    // @inlinable body may only reference public or @usableFromInline symbols.
+    // They remain internal, so they are not part of the public API.
+    @usableFromInline let ax: Double
+    @usableFromInline let bx: Double
+    @usableFromInline let cx: Double
+    @usableFromInline let ay: Double
+    @usableFromInline let by: Double
+    @usableFromInline let cy: Double
 
     public init(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
         // x control points outside [0,1] make the curve non-monotonic in x, which
@@ -112,7 +121,7 @@ public struct UnitBezier: Hashable, Sendable, Codable {
 
     private enum CodingKeys: String, CodingKey { case x1, y1, x2, y2 }
 
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
             try container.decode(Double.self, forKey: .x1),

@@ -55,6 +55,10 @@ public struct ChordRecognizer {
     /// Pointer movement, in points, that turns a held button into a drag.
     public var dragThreshold: Double = 5.0
 
+    /// Longest click run recognised. Past four, the gesture stops being
+    /// something anyone can perform deliberately.
+    public static let maxClickCount = 4
+
     // MARK: - Host callbacks
 
     /// Whether this exact trigger has a binding.
@@ -148,7 +152,11 @@ public struct ChordRecognizer {
         let count = (pendingClicks?.group == resolved ? pendingClicks!.count : 0) + 1
 
         // Only pay the multi-click delay if a longer click could actually match.
-        let longerExists = (count + 1...4).contains { isBound(ButtonTrigger(buttons: resolved, kind: .click(count: $0))) }
+        //
+        // `stride`, not `(count + 1)...maxClickCount`: on the fourth rapid click
+        // that range is 5...4, and an inverted ClosedRange traps at runtime.
+        let longerExists = stride(from: count + 1, through: ChordRecognizer.maxClickCount, by: 1)
+            .contains { isBound(ButtonTrigger(buttons: resolved, kind: .click(count: $0))) }
         if longerExists {
             pendingClicks = (resolved, count, time + multiClickWindow)
         } else {

@@ -52,6 +52,7 @@ public final class AppState: ObservableObject {
     private let store: ProfileStore
     private var permissionTimer: Timer?
     private var saveWorkItem: DispatchWorkItem?
+    private var cancellables = Set<AnyCancellable>()
 
     public init() {
         let url = (try? ProfileStore.defaultURL()) ?? URL(fileURLWithPath: NSTemporaryDirectory())
@@ -63,6 +64,15 @@ public final class AppState: ObservableObject {
         self.document = (try? store.load()) ?? ProfileStore.Document()
         self.permissionGranted = AccessibilityPermission.isGranted
         self.selectedProfileID = document.profiles.first?.id
+
+        // SwiftUI observes AppState, not the engine nested inside it, so the
+        // engine's own changes — devices appearing, the frontmost app switching,
+        // the tap being paused — would never redraw anything. Forwarding its
+        // notifications is what keeps the status footer honest.
+        engine.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
 
         push()
         if permissionGranted { startEngine() } else { watchForPermission() }

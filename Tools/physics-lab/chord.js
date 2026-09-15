@@ -5,6 +5,8 @@ const key = set => [...set].sort((a, b) => a - b).join(',');
 const eq = (a, b) => key(a) === key(b);
 
 class ChordRecognizer {
+  static maxClickCount = 4;
+
   constructor() {
     this.holdThreshold = 0.2;
     this.multiClickWindow = 0.25;
@@ -70,7 +72,9 @@ class ChordRecognizer {
     const count = ((this.pendingClicks && eq(this.pendingClicks.group, resolved)) ? this.pendingClicks.count : 0) + 1;
 
     let longerExists = false;
-    for (let n = count + 1; n <= 4; n++) {
+    // Mirrors ChordRecognizer.maxClickCount. The Swift uses stride here because
+    // a ClosedRange would be inverted (and trap) once count reaches 4.
+    for (let n = count + 1; n <= ChordRecognizer.maxClickCount; n++) {
       if (this.isBound({ buttons: resolved, kind: { click: n } })) { longerExists = true; break; }
     }
     if (longerExists) {
