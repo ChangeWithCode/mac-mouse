@@ -210,7 +210,7 @@ public final class ScrollEngine {
         let momentumPhase: MomentumPhase
         if state == .coasting {
             phase = .none
-            momentumPhase = streamHasOpened ? .continue : .begin
+            momentumPhase = streamHasOpened ? .`continue` : .begin
         } else {
             phase = gestureIsOpen ? .changed : .began
             momentumPhase = .none
