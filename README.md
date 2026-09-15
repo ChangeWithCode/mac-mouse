@@ -19,9 +19,9 @@ Glide adds the four things Mac Mouse Fix is most often asked for:
 
 ## Status
 
-**Builds clean on macOS 14 with Swift 6.2** — `GlideCore`, `GlideKit` and the
-app target all compile, and the 66-test suite passes. CI proves it on every
-push ([Build workflow](.github/workflows/build.yml)).
+**Builds clean on the `macos-14` runner** — `GlideCore`, `GlideKit` and the app
+target all compile, the 66-test suite passes, and a `Glide.dmg` is produced.
+CI proves it on every push ([Build workflow](.github/workflows/build.yml)).
 
 **It has not yet been run against a real mouse.** Compiling is not working: the
 event tap, HID attribution and gesture synthesis have never met the window
@@ -42,9 +42,14 @@ Run everything that needs no Mac:
 There is no published download yet — the code has not been compiled, so no
 release exists to download. Two routes to a `.dmg`:
 
-**Without a Mac.** Push to GitHub and the `Build` workflow compiles on a macOS
-runner, attaching `Glide.dmg` to the run as an artifact. Tagging a version
-(`git tag v0.1.0 && git push origin v0.1.0`) publishes a draft release instead.
+**Without a Mac.** Every push builds on a macOS runner and attaches `Glide.dmg`
+to the run: open the **Actions** tab, pick the run, and download it from the
+**Artifacts** section at the bottom. Artifacts keep for 30 days and download as
+a `.zip`, so unzip it to get the image.
+
+For a permanent, shareable link instead, tag a version — `git tag v0.1.0 &&
+git push origin v0.1.0` — and the Release workflow publishes a draft release
+with the image attached and install instructions filled in.
 
 **With a Mac.**
 
