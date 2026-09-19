@@ -62,7 +62,7 @@ public final class MacroPlayer {
         case .delay(let seconds):
             Thread.sleep(forTimeInterval: seconds)
         case .click(let button):
-            MouseSynthesizer.click(CGMouseButton(rawValue: UInt32(button.number)) ?? .left)
+            MouseSynthesizer.click(button)
         case .move(let x, let y, let relative):
             move(x: x, y: y, relative: relative)
         }

@@ -88,6 +88,16 @@ public enum ScrollEventSynthesizer {
         event.getIntegerValueField(signatureField) == signature
     }
 
+    /// Whether an incoming wheel event already carries gesture or momentum
+    /// phases — macOS's own inertial continuation of a wheel flick, or a driver
+    /// that emits phased output. Re-ingesting those injects a second impulse
+    /// into a coast that is already running; Glide rewrites only plain,
+    /// unphased, non-continuous wheel ticks.
+    public static func carriesPhase(_ event: CGEvent) -> Bool {
+        event.getIntegerValueField(scrollPhaseField) != 0
+            || event.getIntegerValueField(momentumPhaseField) != 0
+    }
+
     /// Mirrors `GlideCore.GesturePhase`, kept separate so GlideCore stays free
     /// of CoreGraphics.
     public enum GesturePhaseValue: UInt32 {

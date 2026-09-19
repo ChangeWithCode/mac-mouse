@@ -69,9 +69,9 @@ public final class ActionDispatcher {
         case .smartZoom: KeyboardSynthesizer.send(Keystroke(keyCode: 0x18, modifiers: .command))  // Cmd+=
 
         // MARK: Clicks
-        case .leftClick:   MouseSynthesizer.click(.left)
-        case .rightClick:  MouseSynthesizer.click(.right)
-        case .middleClick: MouseSynthesizer.click(.center)
+        case .leftClick:   MouseSynthesizer.click(number: 0)
+        case .rightClick:  MouseSynthesizer.click(number: 1)
+        case .middleClick: MouseSynthesizer.click(number: 2)
 
         // MARK: Continuous
         //

@@ -33,6 +33,7 @@ public final class GlideEngine: ObservableObject {
     private let resolver = ProfileResolver()
     private var recognizer = ChordRecognizer()
     private var recognizerTimer: Timer?
+    private var workspaceObserver: NSObjectProtocol?
 
     // State
     @Published public private(set) var isRunning = false
@@ -121,8 +122,13 @@ public final class GlideEngine: ObservableObject {
         recognizerTimer?.invalidate()
         recognizerTimer = nil
         scroll.cancel()
+        GestureSession.shared.end()
         devices.stop()
         recognizer.reset()
+        if let workspaceObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(workspaceObserver)
+            self.workspaceObserver = nil
+        }
         isRunning = false
         isPaused = false
         log.info("Glide engine stopped")
@@ -133,11 +139,27 @@ public final class GlideEngine: ObservableObject {
     /// running and reporting it as "Active" is how the UI ends up lying.
     public var isActive: Bool { isRunning && !isPaused }
 
+    /// Whether the tap is installed at all — distinct from `isRunning`, because
+    /// a failed install throws and is surfaced separately. Diagnostics.
+    public var isTapInstalled: Bool { tap != nil }
+
+    /// How many times the system has disabled the tap for running slow and
+    /// Glide has re-enabled it. A climbing number means the event path is too
+    /// slow. Diagnostics.
+    public var tapRecoveries: Int { tap?.timeoutRecoveries ?? 0 }
+
     /// Temporarily hands every event back to macOS without tearing down.
     public func setPaused(_ paused: Bool) {
         tap?.setPassthrough(paused)
         isPaused = paused
-        if paused { scroll.cancel(); recognizer.reset() }
+        if paused {
+            scroll.cancel()
+            // A gesture in flight must not survive its recogniser: with events
+            // passing through, nothing will ever release it, and the cursor
+            // stays decoupled and hidden with no way back.
+            GestureSession.shared.end()
+            recognizer.reset()
+        }
     }
 
     // MARK: - Configuration
@@ -174,7 +196,7 @@ public final class GlideEngine: ObservableObject {
 
     private func observeFrontmostApplication() {
         frontmostApplication = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        NSWorkspace.shared.notificationCenter.addObserver(
+        workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
@@ -183,8 +205,11 @@ public final class GlideEngine: ObservableObject {
             let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             self.frontmostApplication = app?.bundleIdentifier
             // The view being scrolled has gone away; anything in flight belongs
-            // to it, not to the app that just came forward.
+            // to it, not to the app that just came forward. That includes a
+            // live gesture: dropping the recogniser without ending the session
+            // leaves the cursor decoupled and hidden forever.
             self.scroll.cancel()
+            GestureSession.shared.end()
             self.recognizer.reset()
             self.refreshResolution()
         }
@@ -275,16 +300,21 @@ public final class GlideEngine: ObservableObject {
         case .begin(let trigger):
             guard let binding = resolved.binding(for: trigger) else { return }
             if binding.action.isContinuous {
+                // Defensive: a session left active by a missed `.end` would
+                // silently refuse to begin, leaving its cursor freeze in place.
+                GestureSession.shared.end()
                 GestureSession.shared.begin(binding.action)
             } else {
                 dispatcher.perform(binding.action)
             }
 
         case .end(let trigger):
-            guard let binding = resolved.binding(for: trigger) else { return }
-            if binding.action.isContinuous {
+            // A live gesture ends here even if the binding no longer resolves
+            // (the profile changed mid-hold): the cursor freeze outlives the
+            // binding that started it, and nothing else will release it.
+            if GestureSession.shared.isActive {
                 GestureSession.shared.end()
-            } else {
+            } else if let binding = resolved.binding(for: trigger) {
                 dispatcher.cancelContinuous()
             }
 
@@ -294,7 +324,7 @@ public final class GlideEngine: ObservableObject {
         case .synthesizeClick(let button):
             // The press was swallowed while the recogniser deliberated and
             // nothing matched, so hand the click back rather than eating it.
-            MouseSynthesizer.click(CGMouseButton(rawValue: UInt32(button.number)) ?? .center)
+            MouseSynthesizer.click(button)
         }
     }
 }

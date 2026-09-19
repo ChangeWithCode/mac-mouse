@@ -50,16 +50,31 @@ public enum MouseSynthesizer {
 
     private static let source = CGEventSource(stateID: .privateState)
 
-    public static func click(_ button: CGMouseButton) {
+    /// Clicks the button with the given platform number: 0 left, 1 right,
+    /// 2 middle, 3+ the numbered extra buttons.
+    ///
+    /// The number, not `CGMouseButton`, is what identifies extra buttons —
+    /// that enum has no case above `.center`, so routing buttons 3 and higher
+    /// through it delivered every thumb-button click as a middle click (and a
+    /// `?? .left` fallback delivered them as left clicks). The event type keeps
+    /// its three-case vocabulary, and the real button number is written into
+    /// `mouseEventButtonNumber`, which is the field the receiving application
+    /// actually reads.
+    public static func click(_ button: MouseButton) {
+        click(number: button.number)
+    }
+
+    public static func click(number: Int) {
         let location = CGEvent(source: nil)?.location ?? .zero
-        let (down, up): (CGEventType, CGEventType)
-        switch button {
-        case .left:   (down, up) = (.leftMouseDown, .leftMouseUp)
-        case .right:  (down, up) = (.rightMouseDown, .rightMouseUp)
-        default:      (down, up) = (.otherMouseDown, .otherMouseUp)
+        let (down, up, cgButton): (CGEventType, CGEventType, CGMouseButton)
+        switch number {
+        case 0:  (down, up, cgButton) = (.leftMouseDown, .leftMouseUp, .left)
+        case 1:  (down, up, cgButton) = (.rightMouseDown, .rightMouseUp, .right)
+        default: (down, up, cgButton) = (.otherMouseDown, .otherMouseUp, .center)
         }
         for type in [down, up] {
-            guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: location, mouseButton: button) else { continue }
+            guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: location, mouseButton: cgButton) else { continue }
+            event.setIntegerValueField(.mouseEventButtonNumber, value: Int64(max(0, number)))
             event.setIntegerValueField(.eventSourceUserData, value: ScrollEventSynthesizer.signature)
             event.post(tap: .cgSessionEventTap)
         }

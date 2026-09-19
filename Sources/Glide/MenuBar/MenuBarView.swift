@@ -34,6 +34,17 @@ struct MenuBarView: View {
             }
             row("Feel", state.engine.activeSettings.scrollPreset.name)
 
+            // An engine that cannot start must not look like one that is merely
+            // idle: the popover is the first place anyone looks when the mouse
+            // has stopped being Glide's problem.
+            if let error = state.engine.lastError {
+                Divider()
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(Design.Typography.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Divider()
 
             Toggle("Enabled", isOn: .init(

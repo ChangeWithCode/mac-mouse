@@ -68,6 +68,15 @@ public final class ScrollCoordinator {
             return false
         }
 
+        // A line-based event that still carries a phase is macOS's own
+        // inertial tail (or a driver's phased output), not a user notch. It
+        // belongs to a coast Glide did not start, so it must neither be
+        // swallowed nor fed back in as fresh input.
+        guard !ScrollEventSynthesizer.carriesPhase(event) else {
+            Diagnostics.trace("scroll.phased", "system momentum tail; left alone")
+            return false
+        }
+
         let verticalDelta = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
         let horizontalDelta = event.getIntegerValueField(.scrollWheelEventDeltaAxis2)
         guard verticalDelta != 0 || horizontalDelta != 0 else {

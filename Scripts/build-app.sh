@@ -55,7 +55,21 @@ cp "$BINARY" "$APP/Contents/MacOS/Glide"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
 echo "==> Signing (identity: $IDENTITY)"
-codesign --force --options runtime --sign "$IDENTITY" "$APP"
+if [[ "$IDENTITY" == "-" ]]; then
+  # An ad-hoc signature normally pins the Accessibility grant to this build's
+  # cdhash, which changes on every compile — so the permission silently
+  # evaporates each rebuild and Glide "stops working". A designated requirement
+  # that names only the bundle identifier gives TCC something stable to pin;
+  # a re-grant is then needed only when the identifier changes, not per build.
+  if ! codesign --force --options runtime --sign "$IDENTITY" \
+       --requirements 'designated => identifier "com.glide.app"' "$APP" 2>/dev/null; then
+    echo "note: could not apply a stable designated requirement; falling back to a plain ad-hoc signature" >&2
+    echo "note: the Accessibility grant will need re-granting after each rebuild" >&2
+    codesign --force --options runtime --sign "$IDENTITY" "$APP"
+  fi
+else
+  codesign --force --options runtime --sign "$IDENTITY" "$APP"
+fi
 
 cat <<NOTE
 

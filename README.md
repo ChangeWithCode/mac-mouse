@@ -27,6 +27,16 @@ CI proves it on every push ([Build workflow](.github/workflows/build.yml)).
 event tap, HID attribution and gesture synthesis have never met the window
 server. Treat the scrolling feel as unproven until someone installs it.
 
+The integration layer has since been hardened against the ways a first run
+fails *quietly*: synthesized clicks now carry the real button number (thumb
+buttons used to arrive as middle or left clicks), macOS's own wheel-momentum
+tail is no longer re-ingested as fresh ticks, a gesture interrupted by an app
+switch or a pause now always releases the cursor instead of leaving it hidden
+and decoupled, engine errors are surfaced in the menu bar, and the ad-hoc
+build carries a stable designated requirement so the Accessibility grant
+survives a rebuild. Every failure now has a visible symptom — see
+[Troubleshooting](#troubleshooting).
+
 The maths is a different matter — it is mirrored by a Node harness in
 [`Tools/physics-lab/`](Tools/physics-lab/) that asserts the same invariants,
 runs anywhere, and caught five real bugs (below).
@@ -81,7 +91,40 @@ otherwise completely silent, so the app checks explicitly and says so.
 > macOS ties that permission to the code signature. With ad-hoc signing it
 > changes every build, so remove the stale `Glide` entry under
 > **System Settings → Privacy & Security → Accessibility** before re-adding it.
-> A real Developer ID makes the grant stick.
+> A real Developer ID makes the grant stick. Glide's build script now embeds a
+> stable designated requirement for ad-hoc builds, which means the grant
+> survives rebuilds as long as the bundle identifier does not change.
+
+## Troubleshooting
+
+The failure modes a first run hits, in the order they hit:
+
+**Nothing happens at all — the mouse feels exactly as before.** The event tap
+is not installed, and the cause is almost always Accessibility. The menu bar
+icon still works; open it and the General tab's Status card will say the tap
+is **Not installed**. Grant the permission under **System Settings → Privacy
+& Security → Accessibility** — and if a stale `Glide` entry is already listed,
+remove it first, because macOS keeps denying while a dead entry sits there.
+Recent macOS also re-asks for periodic re-approval of apps that intercept
+input; a prompt appearing months later is that, not a regression.
+
+**Scrolling is unchanged, but buttons work.** Smoothing is off in the resolved
+stack: check the popover's **Enabled** toggle first, then the profile layers —
+a per-app profile that sets `smoothingEnabled: false` wins over the global
+layer. Profiles shows which layers are contributing right now.
+
+**A thumb button clicks as middle (or as left).** You are running an older
+build: the click synthesizer used to lose the button number, because
+`CGMouseButton` has no case above middle. Rebuild from this tree.
+
+**Per-device profiles never apply.** The HID manager was denied **Input
+Monitoring** (System Settings → Privacy & Security → Input Monitoring). Glide
+still scrolls and remaps without it; it simply cannot tell two mice apart.
+
+**Reading deeper.** `GLIDE_TRACE=1` turns on the rate-limited event trace, and
+`log stream --predicate 'subsystem == "com.glide.app"'` follows everything the
+pipeline does. The General tab also shows whether the tap is installed and how
+many times the system has had to pause it.
 
 ## Architecture
 
@@ -182,7 +225,9 @@ can be diffed and kept in a dotfiles repo.
 Stated plainly rather than discovered later:
 
 - **Never run against real hardware.** It compiles and its logic is tested, but
-  no part of the macOS event pipeline has been exercised on a live system.
+  no part of the macOS event pipeline has been exercised on a live system. The
+  integration layer is hardened and instrumented (see
+  [Troubleshooting](#troubleshooting)), which is not the same thing as tested.
 - **Pinch-zoom and space-navigation gestures are stubs.** They need real
   `NSEvent` gesture events (type 29 with the magnify and swipe subtypes) whose
   fields are undocumented and change shape between releases. Rather than guess,
