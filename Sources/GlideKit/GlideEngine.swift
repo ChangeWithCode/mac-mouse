@@ -33,7 +33,7 @@ public final class GlideEngine: ObservableObject {
     private let resolver = ProfileResolver()
     private var recognizer = ChordRecognizer()
     private var recognizerTimer: Timer?
-    private var workspaceObserver: NSObjectProtocol?
+    private var workspaceObserver: (any NSObjectProtocol)?
 
     // State
     @Published public private(set) var isRunning = false
