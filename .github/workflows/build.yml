@@ -96,6 +96,15 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+          # The step summary above needs repo access to read. Annotations do
+          # not, so the first errors are repeated as annotations and a failed
+          # run can be diagnosed from the outside. GitHub keeps 10 per step.
+          if grep -qh "error:" ./*.log 2>/dev/null; then
+            grep -h "error:" ./*.log | sort -u | head -10 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+          fi
+
       - name: Upload build logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -106,10 +115,15 @@ jobs:
       # Only package once everything above actually succeeded.
       - name: Gate
         run: |
-          [ "${{ steps.core.outcome }}"  = "success" ] || { echo "GlideCore failed"; exit 1; }
-          [ "${{ steps.kit.outcome }}"   = "success" ] || { echo "GlideKit failed"; exit 1; }
-          [ "${{ steps.app.outcome }}"   = "success" ] || { echo "Glide app failed"; exit 1; }
-          [ "${{ steps.tests.outcome }}" = "success" ] || { echo "Tests failed"; exit 1; }
+          failed=""
+          [ "${{ steps.core.outcome }}"  = "success" ] || failed="$failed GlideCore"
+          [ "${{ steps.kit.outcome }}"   = "success" ] || failed="$failed GlideKit"
+          [ "${{ steps.app.outcome }}"   = "success" ] || failed="$failed Glide-app"
+          [ "${{ steps.tests.outcome }}" = "success" ] || failed="$failed Tests"
+          if [ -n "$failed" ]; then
+            echo "::error::Failed:$failed (see the Compiler errors annotations and the job summary)"
+            exit 1
+          fi
 
       - name: Assemble Glide.app
         run: ./Scripts/build-app.sh
