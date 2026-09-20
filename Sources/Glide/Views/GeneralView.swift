@@ -97,6 +97,9 @@ struct GeneralView: View {
                 Card("About") {
                     VStack(alignment: .leading, spacing: Design.Space.xs) {
                         Text("Glide").font(Design.Typography.heading)
+                        Text(Self.versionSummary)
+                            .font(Design.Typography.caption)
+                            .foregroundStyle(Design.Palette.secondaryLabel)
                         Text("""
                              A pointing-device utility for macOS, in the spirit of Mac Mouse Fix, \
                              with layered profiles, per-device settings, chords and macros.
@@ -143,6 +146,22 @@ struct GeneralView: View {
             launchAtLoginError = error.localizedDescription
         }
     }
+
+    /// Reads what `Scripts/build-app.sh` stamped from the top-level VERSION
+    /// file. A bug report is close to useless without it, and the bundle is the
+    /// only place the running app can learn its own version from.
+    private static let versionSummary: String = {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        let build = info?["CFBundleVersion"] as? String ?? ""
+        if short == "0.0.0" {
+            // An unstamped bundle: assembled by hand rather than by the script.
+            return "Unversioned development build"
+        }
+        return build.isEmpty || build == short
+            ? "Version \(short)"
+            : "Version \(short) (\(build))"
+    }()
 
     private func revealConfiguration() {
         guard let url = try? ProfileStore.defaultURL() else { return }

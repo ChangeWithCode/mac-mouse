@@ -18,7 +18,15 @@ if [[ ! -d "$APP" ]]; then
   exit 1
 fi
 
-echo "==> Staging"
+# The version is read back out of the bundle rather than from VERSION, so the
+# image is always labelled with what was actually built.
+VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+  "$APP/Contents/Info.plist" 2>/dev/null || echo "0.0.0")
+if [[ "$VERSION" == "0.0.0" ]]; then
+  echo "warning: $APP carries no stamped version. Rebuild with Scripts/build-app.sh." >&2
+fi
+
+echo "==> Staging Glide $VERSION"
 rm -rf "$STAGING" "$DMG"
 mkdir -p "$STAGING"
 cp -R "$APP" "$STAGING/"
@@ -28,7 +36,7 @@ ln -s /Applications "$STAGING/Applications"
 
 echo "==> Creating $DMG"
 hdiutil create \
-  -volname "Glide" \
+  -volname "Glide $VERSION" \
   -srcfolder "$STAGING" \
   -ov -format UDZO \
   "$DMG"
@@ -38,7 +46,7 @@ rm -rf "$STAGING"
 SIZE=$(du -h "$DMG" | cut -f1)
 cat <<NOTE
 
-Built $DMG ($SIZE)
+Built $DMG — version $VERSION ($SIZE)
 
 This image is not notarised, so macOS will refuse to open it on first launch.
 To get past that, right-click Glide in Applications and choose Open, then

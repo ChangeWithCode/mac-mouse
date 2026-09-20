@@ -14,7 +14,29 @@ jobs:
   release:
     runs-on: macos-14
     steps:
+      # Full history: Scripts/build-app.sh counts commits for CFBundleVersion,
+      # and a shallow clone would make every release report build 1.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A tag that disagrees with VERSION would publish an image whose About
+      # card and bundle version contradict the release it is attached to.
+      # Catch it before anything is built or published.
+      - name: Check VERSION
+        id: version
+        run: |
+          file_version=$(tr -d '[:space:]' < VERSION)
+          echo "value=$file_version" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag_version="${GITHUB_REF_NAME#v}"
+            if [ "$file_version" != "$tag_version" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} does not match VERSION ($file_version). Update VERSION, or re-tag as v$file_version."
+              exit 1
+            fi
+          fi
+          echo "Releasing Glide $file_version"
+
       - run: swift test
       - run: ./Scripts/build-app.sh
       - run: ./Scripts/package-dmg.sh
@@ -25,6 +47,8 @@ jobs:
           files: dist/Glide.dmg
           draft: true
           body: |
+            Glide ${{ steps.version.outputs.value }} — requires macOS 13 or later.
+
             ## Installing
 
             1. Download `Glide.dmg` below and open it.
@@ -34,8 +58,6 @@ jobs:
                refused the first time. Once only.
             4. Grant **Accessibility** permission when asked. Glide cannot read
                mouse events without it, and macOS gives no error if it is missing.
-
-            Requires macOS 13 or later.
 
             > Because this build is ad-hoc signed, macOS re-asks for
             > Accessibility permission after every update. Remove the old

@@ -12,10 +12,14 @@
     <string>Glide</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <!-- Placeholders. Scripts/build-app.sh stamps the real numbers into the
+         bundle's copy of this file from the top-level VERSION file, so the
+         version lives in exactly one place. A bundle still reading 0.0.0 was
+         assembled by hand rather than by the script. -->
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>0.0.0</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>0</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <!-- Menu-bar app: no Dock icon, no app-switcher entry. The settings window

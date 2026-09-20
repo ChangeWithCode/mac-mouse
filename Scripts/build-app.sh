@@ -6,6 +6,9 @@
 # requires Accessibility permission, and macOS grants that to a bundle
 # identifier, not to a loose executable.
 #
+# The version comes from the top-level VERSION file and is stamped into the
+# bundle's Info.plist, so a build can always be identified from the app itself.
+#
 # Usage:  Scripts/build-app.sh [--debug] [--sign IDENTITY]
 
 set -euo pipefail
@@ -54,6 +57,30 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/Glide"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
+# VERSION is the single source of truth. Resources/Info.plist only carries
+# placeholders; the numbers are written into the bundle's copy here, which must
+# happen before codesign because the signature covers Info.plist.
+VERSION=$(tr -d '[:space:]' < VERSION)
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "error: VERSION must hold a MAJOR.MINOR.PATCH number, found '$VERSION'." >&2
+  exit 1
+fi
+
+# CFBundleVersion has to increase between builds that share a marketing
+# version, or macOS treats an update as the same build. The commit count does
+# that on its own; it falls back to 0 outside a git checkout (a source tarball),
+# where there is nothing to count.
+BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+
+PLISTBUDDY=/usr/libexec/PlistBuddy
+if [[ ! -x "$PLISTBUDDY" ]]; then
+  echo "error: $PLISTBUDDY not found, so the version cannot be stamped." >&2
+  exit 1
+fi
+"$PLISTBUDDY" -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
+"$PLISTBUDDY" -c "Set :CFBundleVersion $VERSION.$BUILD" "$APP/Contents/Info.plist"
+echo "==> Version $VERSION (build $VERSION.$BUILD)"
+
 echo "==> Signing (identity: $IDENTITY)"
 if [[ "$IDENTITY" == "-" ]]; then
   # An ad-hoc signature normally pins the Accessibility grant to this build's
@@ -73,7 +100,7 @@ fi
 
 cat <<NOTE
 
-Built $APP
+Built $APP — version $VERSION ($VERSION.$BUILD)
 
   open $APP
 

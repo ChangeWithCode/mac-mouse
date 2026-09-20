@@ -57,9 +57,11 @@ to the run: open the **Actions** tab, pick the run, and download it from the
 **Artifacts** section at the bottom. Artifacts keep for 30 days and download as
 a `.zip`, so unzip it to get the image.
 
-For a permanent, shareable link instead, tag a version — `git tag v0.1.0 &&
-git push origin v0.1.0` — and the Release workflow publishes a draft release
-with the image attached and install instructions filled in.
+For a permanent, shareable link instead, tag a version — set `VERSION`, then
+`git tag v0.1.0 && git push origin v0.1.0` — and the Release workflow publishes
+a draft release with the image attached and install instructions filled in. The
+tag has to match `VERSION`; the workflow refuses the release otherwise. See
+[Versioning](#versioning).
 
 **With a Mac.**
 
@@ -94,6 +96,30 @@ otherwise completely silent, so the app checks explicitly and says so.
 > A real Developer ID makes the grant stick. Glide's build script now embeds a
 > stable designated requirement for ad-hoc builds, which means the grant
 > survives rebuilds as long as the bundle identifier does not change.
+
+## Versioning
+
+The version lives in one place: the `VERSION` file at the root of the repo,
+holding a bare `MAJOR.MINOR.PATCH` number.
+
+`Scripts/build-app.sh` reads it and stamps the bundle as it is assembled —
+`CFBundleShortVersionString` is `VERSION` verbatim, and `CFBundleVersion`
+appends the commit count (`0.1.0.128`) so two builds of the same release are
+still distinguishable to macOS. `Resources/Info.plist` carries only
+placeholders; a bundle reporting `0.0.0` was assembled by hand rather than by
+the script, and the app's **About** card says so outright.
+
+Everything downstream follows from it: the disk image's volume name, the
+version shown in **General → About**, and the Release workflow, which refuses
+to publish when the pushed tag disagrees with the file.
+
+To cut a release:
+
+```bash
+echo 0.2.0 > VERSION
+git commit -am "Release 0.2.0"
+git tag v0.2.0 && git push origin HEAD v0.2.0
+```
 
 ## Troubleshooting
 
